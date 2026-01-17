@@ -1,0 +1,30 @@
+[Unit]
+Description=mktxp exporter in docker
+Documentation=https://github.com/akpw/mktxp
+After=docker.service network-online.target
+Requires=docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+Restart=on-failure
+RestartSec=10s
+StartLimitInterval=120s
+StartLimitBurst=5
+
+ExecStartPre=-/usr/bin/docker rm -f mktxp
+ExecStart=/usr/bin/docker run \
+  --rm \
+  --publish 49090:49090 \
+  --name=mktxp \
+  --workdir /mktxp \
+  --volume=/etc/mktxp:/root/mktxp:rw \
+  --user=root \
+  ghcr.io/akpw/mktxp:main 
+
+ExecStop=/usr/bin/docker stop --time 5 mktxp
+ExecReload=/usr/bin/docker kill --signal HUP mktxp
+
+[Install]
+WantedBy=multi-user.target
+

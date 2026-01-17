@@ -1,0 +1,33 @@
+[Unit]
+Description=Node Exporter Container
+Requires=docker.service
+After=docker.service
+
+[Service]
+Restart=always
+ExecStartPre=-/usr/bin/docker rm -f node_exporter
+ExecStart=/usr/bin/docker run \
+  --rm \
+  --security-opt apparmor=unconfined \
+  -p 9100:9100 \
+  -m 128m \
+  --cpu-shares=2 \
+  -v "/proc:/host/proc:ro" \
+  -v "/sys:/host/sys:ro" \
+  -v "/:/rootfs:ro" \
+  -v "/var/run/dbus:/var/run/dbus:ro" \
+  --name node_exporter \
+  prom/node-exporter:v1.9.0 \
+  --path.procfs=/host/proc \
+  --path.sysfs=/host/sys \
+  --path.rootfs=/rootfs \
+  --collector.systemd \
+  --collector.systemd.unit-include="(node|prometheus|kibana|docker|grafana)" \
+  --collector.filesystem.mount-points-exclude="^/(dev|proc|sys|var/lib/docker/.+|var/lib/kubelet/.+)($|/)"
+ 
+ExecStop=/usr/bin/docker stop -t 5 node_exporter
+
+EnvironmentFile=-/etc/default/node_exporter
+
+[Install]
+WantedBy=multi-user.target

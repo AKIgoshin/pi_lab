@@ -1,0 +1,45 @@
+[Unit]
+Description=Grafana Service in Docker
+Documentation=https://grafana.com/docs/grafana/latest/
+After=docker.service network-online.target
+Requires=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+Restart=on-failure
+RestartSec=10s
+StartLimitInterval=120s
+StartLimitBurst=5
+TimeoutStartSec=300
+TimeoutStopSec=30
+
+ExecStartPre=-/usr/bin/docker rm -f grafana
+
+ExecStart=/usr/bin/docker run \
+  --rm \
+  --name grafana \
+  --publish 3000:3000 \
+  --user 472:472 \
+  --volume /var/lib/grafana:/var/lib/grafana:z \
+  --volume /etc/grafana/provisioning:/etc/grafana/provisioning:ro,z \
+  --volume /etc/grafana/dashboards:/etc/grafana/dashboards:ro,z \
+  --env-file /etc/grafana/grafana.env \
+  --health-cmd="wget -q -O /dev/null http://localhost:3000/api/health || exit 1" \
+  --health-start-period=30s \
+  --health-interval=30s \
+  --health-timeout=5s \
+  --health-retries=3 \
+  --log-driver=journald \
+  --log-opt tag=grafana \
+  --security-opt no-new-privileges:true \
+  --cap-drop=ALL \
+  grafana/grafana:12.2-ubuntu
+  
+ExecStop=/usr/bin/docker stop --time 10 grafana
+ExecStopPost=-/usr/bin/docker rm -f grafana
+ExecReload=/usr/bin/docker kill --signal=SIGHUP grafana
+  
+[Install]
+WantedBy=multi-user.target
+
